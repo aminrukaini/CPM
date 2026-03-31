@@ -575,40 +575,79 @@
     container.innerHTML = svg;
   }
 
-  function loadExample() {
-    const examples = [
-      { name: 'Building Construction', tasks: [{ id:'A', name:'Planning', duration:3, deps:[] }, { id:'B', name:'Design', duration:4, deps:['A'] }, { id:'C', name:'Foundation', duration:6, deps:['A'] }, { id:'D', name:'Framing', duration:5, deps:['B','C'] }, { id:'E', name:'Electrical', duration:3, deps:['C'] }, { id:'F', name:'Finishing', duration:4, deps:['D','E'] }] },
-      { name: 'Software Release', tasks: [{ id:'A', name:'Requirements', duration:5, deps:[] }, { id:'B', name:'Architecture', duration:4, deps:['A'] }, { id:'C', name:'Backend Dev', duration:8, deps:['B'] }, { id:'D', name:'Frontend Dev', duration:7, deps:['B'] }, { id:'E', name:'Testing', duration:4, deps:['C','D'] }, { id:'F', name:'Documentation', duration:3, deps:['C','D'] }, { id:'G', name:'Deployment', duration:2, deps:['E','F'] }] },
-      { name: 'Event Planning', tasks: [{ id:'A', name:'Concept', duration:2, deps:[] }, { id:'B', name:'Budget', duration:3, deps:['A'] }, { id:'C', name:'Venue Selection', duration:4, deps:['B'] }, { id:'D', name:'Catering', duration:5, deps:['B'] }, { id:'E', name:'Marketing', duration:6, deps:['A'] }, { id:'F', name:'Setup', duration:2, deps:['C','D','E'] }, { id:'G', name:'Event Day', duration:1, deps:['F'] }] },
-      { name: 'Product Launch', tasks: [{ id:'A', name:'Market Research', duration:4, deps:[] }, { id:'B', name:'Product Design', duration:6, deps:['A'] }, { id:'C', name:'Prototype', duration:5, deps:['B'] }, { id:'D', name:'Testing', duration:4, deps:['C'] }, { id:'E', name:'Manufacturing Setup', duration:7, deps:['B'] }, { id:'F', name:'Production', duration:3, deps:['D','E'] }, { id:'G', name:'Marketing', duration:4, deps:['A'] }, { id:'H', name:'Distribution', duration:2, deps:['F','G'] }] },
-      { name: 'House Renovation', tasks: [{ id:'A', name:'Permits', duration:3, deps:[] }, { id:'B', name:'Demo', duration:4, deps:['A'] }, { id:'C', name:'Structural', duration:8, deps:['B'] }, { id:'D', name:'Plumbing', duration:6, deps:['C'] }, { id:'E', name:'Electrical', duration:6, deps:['C'] }, { id:'F', name:'Drywall', duration:5, deps:['D','E'] }, { id:'G', name:'Painting', duration:3, deps:['F'] }, { id:'H', name:'Flooring', duration:4, deps:['G'] }, { id:'I', name:'Fixtures', duration:2, deps:['H'] }] }
-    ];
+  const exampleProjects = {
+    0: { name: 'Building Construction', tasks: [{ id:'A', name:'Planning', duration:3, deps:[] }, { id:'B', name:'Design', duration:4, deps:['A'] }, { id:'C', name:'Foundation', duration:6, deps:['A'] }, { id:'D', name:'Framing', duration:5, deps:['B','C'] }, { id:'E', name:'Electrical', duration:3, deps:['C'] }, { id:'F', name:'Finishing', duration:4, deps:['D','E'] }] },
+    1: { name: 'Software Release', tasks: [{ id:'A', name:'Requirements', duration:5, deps:[] }, { id:'B', name:'Architecture', duration:4, deps:['A'] }, { id:'C', name:'Backend Dev', duration:8, deps:['B'] }, { id:'D', name:'Frontend Dev', duration:7, deps:['B'] }, { id:'E', name:'Testing', duration:4, deps:['C','D'] }, { id:'F', name:'Documentation', duration:3, deps:['C','D'] }, { id:'G', name:'Deployment', duration:2, deps:['E','F'] }] },
+    2: { name: 'Event Planning', tasks: [{ id:'A', name:'Concept', duration:2, deps:[] }, { id:'B', name:'Budget', duration:3, deps:['A'] }, { id:'C', name:'Venue Selection', duration:4, deps:['B'] }, { id:'D', name:'Catering', duration:5, deps:['B'] }, { id:'E', name:'Marketing', duration:6, deps:['A'] }, { id:'F', name:'Setup', duration:2, deps:['C','D','E'] }, { id:'G', name:'Event Day', duration:1, deps:['F'] }] },
+    3: { name: 'Product Launch', tasks: [{ id:'A', name:'Market Research', duration:4, deps:[] }, { id:'B', name:'Product Design', duration:6, deps:['A'] }, { id:'C', name:'Prototype', duration:5, deps:['B'] }, { id:'D', name:'Testing', duration:4, deps:['C'] }, { id:'E', name:'Manufacturing Setup', duration:7, deps:['B'] }, { id:'F', name:'Production', duration:3, deps:['D','E'] }, { id:'G', name:'Marketing', duration:4, deps:['A'] }, { id:'H', name:'Distribution', duration:2, deps:['F','G'] }] },
+    4: { name: 'House Renovation', tasks: [{ id:'A', name:'Permits', duration:3, deps:[] }, { id:'B', name:'Demo', duration:4, deps:['A'] }, { id:'C', name:'Structural', duration:8, deps:['B'] }, { id:'D', name:'Plumbing', duration:6, deps:['C'] }, { id:'E', name:'Electrical', duration:6, deps:['C'] }, { id:'F', name:'Drywall', duration:5, deps:['D','E'] }, { id:'G', name:'Painting', duration:3, deps:['F'] }, { id:'H', name:'Flooring', duration:4, deps:['G'] }, { id:'I', name:'Fixtures', duration:2, deps:['H'] }] }
+  };
 
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;display:flex;align-items:center;justify-content:center;';
-    modal.innerHTML = `<div style="background:#161822;border:1px solid #1e2130;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;"><h2 style="color:#e8eaed;font-size:18px;font-weight:700;margin-bottom:16px;">Choose Example Project</h2><div style="display:flex;flex-direction:column;gap:8px;">${examples.map((ex, i) => `<button onclick="loadExampleProject(${i})" style="padding:12px;border-radius:8px;background:#0f1117;border:1px solid #1e2130;color:#e8eaed;text-align:left;cursor:pointer;transition:all 0.2s;font-size:14px;font-weight:500;" onmouseover="this.style.background='#1e2130'" onmouseout="this.style.background='#0f1117'">${ex.name}</button>`).join('')}</div><button onclick="this.closest('[style*=fixed]').remove()" style="margin-top:16px;width:100%;padding:10px;border-radius:8px;background:#282d42;border:none;color:#a0a6b8;cursor:pointer;font-weight:500;">Cancel</button></div>`;
-    document.body.appendChild(modal);
+  function loadExample() {
+    try {
+      const modal = document.createElement('div');
+      modal.id = 'example-modal';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;display:flex;align-items:center;justify-content:center;';
+      
+      const content = document.createElement('div');
+      content.style.cssText = 'background:#161822;border:1px solid #1e2130;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;';
+      
+      const title = document.createElement('h2');
+      title.textContent = 'Choose Example Project';
+      title.style.cssText = 'color:#e8eaed;font-size:18px;font-weight:700;margin-bottom:16px;';
+      content.appendChild(title);
+      
+      const buttonsDiv = document.createElement('div');
+      buttonsDiv.style.cssText = 'display:flex;flex-direction:column;gap:8px;';
+      
+      Object.entries(exampleProjects).forEach(([index, project]) => {
+        const btn = document.createElement('button');
+        btn.textContent = project.name;
+        btn.style.cssText = 'padding:12px;border-radius:8px;background:#0f1117;border:1px solid #1e2130;color:#e8eaed;text-align:left;cursor:pointer;transition:all 0.2s;font-size:14px;font-weight:500;';
+        btn.addEventListener('click', () => loadExampleProject(parseInt(index)));
+        btn.addEventListener('mouseover', () => btn.style.background = '#1e2130');
+        btn.addEventListener('mouseout', () => btn.style.background = '#0f1117');
+        buttonsDiv.appendChild(btn);
+      });
+      content.appendChild(buttonsDiv);
+      
+      const cancelBtn = document.createElement('button');
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.style.cssText = 'margin-top:16px;width:100%;padding:10px;border-radius:8px;background:#282d42;border:none;color:#a0a6b8;cursor:pointer;font-weight:500;';
+      cancelBtn.addEventListener('click', () => modal.remove());
+      content.appendChild(cancelBtn);
+      
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+    } catch(e) {
+      showToast('Error loading examples: ' + e.message, 'error');
+    }
   }
 
-  window.loadExampleProject = function(index) {
-    const examples = [
-      [{ id:'A', name:'Planning', duration:3, deps:[] }, { id:'B', name:'Design', duration:4, deps:['A'] }, { id:'C', name:'Foundation', duration:6, deps:['A'] }, { id:'D', name:'Framing', duration:5, deps:['B','C'] }, { id:'E', name:'Electrical', duration:3, deps:['C'] }, { id:'F', name:'Finishing', duration:4, deps:['D','E'] }],
-      [{ id:'A', name:'Requirements', duration:5, deps:[] }, { id:'B', name:'Architecture', duration:4, deps:['A'] }, { id:'C', name:'Backend Dev', duration:8, deps:['B'] }, { id:'D', name:'Frontend Dev', duration:7, deps:['B'] }, { id:'E', name:'Testing', duration:4, deps:['C','D'] }, { id:'F', name:'Documentation', duration:3, deps:['C','D'] }, { id:'G', name:'Deployment', duration:2, deps:['E','F'] }],
-      [{ id:'A', name:'Concept', duration:2, deps:[] }, { id:'B', name:'Budget', duration:3, deps:['A'] }, { id:'C', name:'Venue Selection', duration:4, deps:['B'] }, { id:'D', name:'Catering', duration:5, deps:['B'] }, { id:'E', name:'Marketing', duration:6, deps:['A'] }, { id:'F', name:'Setup', duration:2, deps:['C','D','E'] }, { id:'G', name:'Event Day', duration:1, deps:['F'] }],
-      [{ id:'A', name:'Market Research', duration:4, deps:[] }, { id:'B', name:'Product Design', duration:6, deps:['A'] }, { id:'C', name:'Prototype', duration:5, deps:['B'] }, { id:'D', name:'Testing', duration:4, deps:['C'] }, { id:'E', name:'Manufacturing Setup', duration:7, deps:['B'] }, { id:'F', name:'Production', duration:3, deps:['D','E'] }, { id:'G', name:'Marketing', duration:4, deps:['A'] }, { id:'H', name:'Distribution', duration:2, deps:['F','G'] }],
-      [{ id:'A', name:'Permits', duration:3, deps:[] }, { id:'B', name:'Demo', duration:4, deps:['A'] }, { id:'C', name:'Structural', duration:8, deps:['B'] }, { id:'D', name:'Plumbing', duration:6, deps:['C'] }, { id:'E', name:'Electrical', duration:6, deps:['C'] }, { id:'F', name:'Drywall', duration:5, deps:['D','E'] }, { id:'G', name:'Painting', duration:3, deps:['F'] }, { id:'H', name:'Flooring', duration:4, deps:['G'] }, { id:'I', name:'Fixtures', duration:2, deps:['H'] }]
-    ];
-    const exampleNames = ['Building Construction', 'Software Release', 'Event Planning', 'Product Launch', 'House Renovation'];
-    tasks = exampleNames[index] ? examples[index].map(t => ({ ...t, ES:null, EF:null, LS:null, LF:null, slack:null, critical:false })) : [];
-    document.getElementById('project-name').value = exampleNames[index] || 'Example';
-    computed = false;
-    document.getElementById('results-section').style.display = 'none';
-    renderTable();
-    document.querySelectorAll('[style*="position:fixed"]').forEach(el => el.remove());
-    showToast(`Loaded: ${exampleNames[index]}. Hit Calculate CPM!`, 'success');
-  };
+  function loadExampleProject(index) {
+    try {
+      const project = exampleProjects[index];
+      if (!project) {
+        showToast('Example project not found', 'error');
+        return;
+      }
+      
+      tasks = project.tasks.map(t => ({ ...t, ES:null, EF:null, LS:null, LF:null, slack:null, critical:false }));
+      document.getElementById('project-name').value = project.name;
+      computed = false;
+      document.getElementById('results-section').style.display = 'none';
+      renderTable();
+      
+      const modal = document.getElementById('example-modal');
+      if (modal) modal.remove();
+      
+      showToast(`Loaded: ${project.name}. Hit Calculate CPM!`, 'success');
+    } catch(e) {
+      showToast('Error loading example: ' + e.message, 'error');
+    }
+  }
 
   lucide.createIcons();
 </script>
- <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e4f9443601c8117',t:'MTc3NDk2MjQ2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e4fa274a7f7c0c2',t:'MTc3NDk2MzA1MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
