@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="en" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Critical Path Simulator</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <style>
+  * { font-family: 'DM Sans', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  html, body { height: 100%; margin: 0; }
+
+  .task-node {
+    transition: all 0.3s ease;
+  }
+  .task-node:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+  }
+  .critical-node {
+    animation: criticalPulse 2s ease-in-out infinite;
+  }
+  @keyframes criticalPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220,38,38,0.3); }
+    50% { box-shadow: 0 0 0 8px rgba(220,38,38,0); }
+  }
+  .fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity:0; transform: translateY(10px); }
+    to { opacity:1; transform: translateY(0); }
+  }
+  .toast {
+    animation: toastIn 0.3s ease-out, toastOut 0.3s ease-in 2.7s forwards;
+  }
+  @keyframes toastIn { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes toastOut { to { opacity:0; transform:translateY(-20px); } }
+
+  svg.graph-svg text { font-family: 'JetBrains Mono', monospace; }
+</style>
+  <style>body { box-sizing: border-box; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full w-full overflow-auto" style="background:#0f1117;"><!-- Toast container -->
+   <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div><!-- Main App -->
+   <div id="main-app" class="h-full w-full overflow-auto"><!-- Header -->
+    <header class="px-6 py-5 border-b" style="border-color:#1e2130;">
+     <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <div>
+       <p class="text-xs font-medium mb-2" style="color:#7a7f8e;">KMK30303 Engineering Technology Management, UniMAP</p>
+       <h1 id="page-title" class="text-2xl font-bold" style="color:#e8eaed;">Critical Path Method Simulator</h1>
+       <p id="subtitle-text" class="text-sm mt-1" style="color:#7a7f8e;">Learn project scheduling visually</p>
+      </div>
+      <div class="flex gap-2 flex-wrap"><button onclick="loadExample()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors" style="background:#1e2130;color:#a0a6b8;" onmouseover="this.style.background='#282d42'" onmouseout="this.style.background='#1e2130'"> <i data-lucide="lightbulb" style="width:16px;height:16px;"></i> Load Example </button> <button onclick="resetWorkspace()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors" style="background:#1e2130;color:#a0a6b8;" onmouseover="this.style.background='#282d42'" onmouseout="this.style.background='#1e2130'"> <i data-lucide="rotate-ccw" style="width:16px;height:16px;"></i> Clear All </button>
+      </div>
+     </div>
+    </header>
+    <main class="max-w-7xl mx-auto p-6">
+     <!-- Project Name Input -->
+     <section class="rounded-xl p-5 mb-6 fade-in flex gap-3 items-end" style="background:#161822;border:1px solid #1e2130;">
+      <div class="flex-1">
+       <label for="project-name" class="block text-xs font-medium mb-1" style="color:#7a7f8e;">Project Name</label> <input id="project-name" type="text" placeholder="e.g. Building Construction" class="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2" style="background:#0f1117;border:1px solid #1e2130;color:#e8eaed;--tw-ring-color:#4f8cff;">
+      </div>
+     </section><!-- Add Task Form -->
+     <section class="rounded-xl p-5 mb-6 fade-in" style="background:#161822;border:1px solid #1e2130;">
+      <h2 class="text-base font-semibold mb-4 flex items-center gap-2" style="color:#e8eaed;"><i data-lucide="plus-circle" style="width:18px;height:18px;color:#4f8cff;"></i> Add Activity</h2>
+      <form id="task-form" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+       <div><label for="task-id" class="block text-xs font-medium mb-1" style="color:#7a7f8e;">Activity ID</label> <input id="task-id" type="text" placeholder="e.g. A" maxlength="8" class="w-full px-3 py-2 rounded-lg text-sm mono outline-none focus:ring-2" style="background:#0f1117;border:1px solid #1e2130;color:#e8eaed;--tw-ring-color:#4f8cff;">
+       </div>
+       <div><label for="task-name" class="block text-xs font-medium mb-1" style="color:#7a7f8e;">Name</label> <input id="task-name" type="text" placeholder="e.g. Foundation" class="w-full px-3 py-2 rounded-lg text-sm outline-none focus:ring-2" style="background:#0f1117;border:1px solid #1e2130;color:#e8eaed;--tw-ring-color:#4f8cff;">
+       </div>
+       <div><label for="task-duration" class="block text-xs font-medium mb-1" style="color:#7a7f8e;">Duration (days)</label> <input id="task-duration" type="number" min="1" placeholder="e.g. 5" class="w-full px-3 py-2 rounded-lg text-sm mono outline-none focus:ring-2" style="background:#0f1117;border:1px solid #1e2130;color:#e8eaed;--tw-ring-color:#4f8cff;">
+       </div>
+       <div><label for="task-deps" class="block text-xs font-medium mb-1" style="color:#7a7f8e;">Dependencies</label> <input id="task-deps" type="text" placeholder="e.g. A, B" class="w-full px-3 py-2 rounded-lg text-sm mono outline-none focus:ring-2" style="background:#0f1117;border:1px solid #1e2130;color:#e8eaed;--tw-ring-color:#4f8cff;">
+       </div><button type="submit" class="px-5 py-2 rounded-lg text-sm font-semibold transition-colors h-[38px]" style="background:#4f8cff;color:#fff;" onmouseover="this.style.background='#3a73e0'" onmouseout="this.style.background='#4f8cff'"> Add Activity </button>
+      </form>
+     </section><!-- Activities Table -->
+     <section id="table-section" class="rounded-xl mb-6 overflow-hidden fade-in" style="background:#161822;border:1px solid #1e2130;display:none;">
+      <div class="px-5 py-4 flex items-center justify-between border-b" style="border-color:#1e2130;">
+       <h2 class="text-base font-semibold flex items-center gap-2" style="color:#e8eaed;"><i data-lucide="list" style="width:18px;height:18px;color:#4f8cff;"></i> Activities</h2><button onclick="calculateCPM()" class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors" style="background:#22c55e;color:#fff;" onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'"> <i data-lucide="play" style="width:15px;height:15px;"></i> Calculate CPM </button>
+      </div>
+      <div class="overflow-x-auto">
+       <table class="w-full text-sm">
+        <thead>
+         <tr style="background:#0f1117;">
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">ID</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">Name</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">Duration</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">Deps</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">ES</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">EF</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">LS</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">LF</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">Slack</th>
+          <th class="px-4 py-3 text-left font-medium" style="color:#7a7f8e;">Critical?</th>
+          <th class="px-4 py-3 text-center font-medium" style="color:#7a7f8e;">Action</th>
+         </tr>
+        </thead>
+        <tbody id="task-tbody"></tbody>
+       </table>
+      </div>
+      <div class="px-5 py-3 text-xs" style="color:#7a7f8e;border-top:1px solid #1e2130;">
+       💡 <strong>Click duration values</strong> to edit activity timelines • <strong>Click target deadline</strong> to compress schedule and create negative slack
+      </div>
+     </section><!-- Results -->
+     <div id="results-section" style="display:none;"><!-- Stats row -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+       <div class="rounded-xl p-4 text-center cursor-pointer transition-all hover:border-blue-500/50" style="background:#161822;border:1px solid #1e2130;" onclick="editProjectDuration()" title="Click to edit target deadline">
+        <p class="text-xs font-medium mb-1" style="color:#7a7f8e;">Target Deadline</p>
+        <p id="stat-duration" class="text-3xl font-bold mono" style="color:#4f8cff;">—</p>
+        <p class="text-xs" style="color:#7a7f8e;">days</p>
+       </div>
+       <div class="rounded-xl p-4 text-center" style="background:#161822;border:1px solid #1e2130;">
+        <p class="text-xs font-medium mb-1" style="color:#7a7f8e;">Critical Activities</p>
+        <p id="stat-critical" class="text-3xl font-bold mono" style="color:#dc2626;">—</p>
+       </div>
+       <div class="rounded-xl p-4 text-center" style="background:#161822;border:1px solid #1e2130;">
+        <p class="text-xs font-medium mb-1" style="color:#7a7f8e;">Critical Path</p>
+        <p id="stat-path" class="text-lg font-bold mono" style="color:#22c55e;">—</p>
+       </div>
+      </div><!-- Network Diagram -->
+      <section class="rounded-xl p-5 mb-6" style="background:#161822;border:1px solid #1e2130;">
+       <h2 class="text-base font-semibold mb-4 flex items-center gap-2" style="color:#e8eaed;"><i data-lucide="git-branch" style="width:18px;height:18px;color:#4f8cff;"></i> Network Diagram</h2>
+       <div id="network-graph" class="overflow-x-auto rounded-lg p-4" style="background:#0f1117;"></div>
+      </section><!-- Gantt Chart -->
+      <section class="rounded-xl p-5 mb-6" style="background:#161822;border:1px solid #1e2130;">
+       <h2 class="text-base font-semibold mb-4 flex items-center gap-2" style="color:#e8eaed;"><i data-lucide="bar-chart-2" style="width:18px;height:18px;color:#4f8cff;"></i> Gantt Chart</h2>
+       <div id="gantt-chart" class="overflow-x-auto rounded-lg p-4" style="background:#0f1117;"></div>
+      </section><!-- Explanation -->
+      <section class="rounded-xl p-5" style="background:#161822;border:1px solid #1e2130;">
+       <h2 class="text-base font-semibold mb-3 flex items-center gap-2" style="color:#e8eaed;"><i data-lucide="book-open" style="width:18px;height:18px;color:#4f8cff;"></i> How It Works</h2>
+       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm" style="color:#a0a6b8;">
+        <div class="p-3 rounded-lg" style="background:#0f1117;">
+         <p class="font-semibold mb-1" style="color:#4f8cff;">Forward Pass</p>
+         <p>Calculates <strong class="mono" style="color:#e8eaed;">ES</strong> (Early Start) and <strong class="mono" style="color:#e8eaed;">EF</strong> (Early Finish) from left to right. ES = max(EF of predecessors), EF = ES + Duration.</p>
+        </div>
+        <div class="p-3 rounded-lg" style="background:#0f1117;">
+         <p class="font-semibold mb-1" style="color:#4f8cff;">Backward Pass</p>
+         <p>Calculates <strong class="mono" style="color:#e8eaed;">LF</strong> (Late Finish) and <strong class="mono" style="color:#e8eaed;">LS</strong> (Late Start) from right to left. LF = min(LS of successors), LS = LF − Duration.</p>
+        </div>
+        <div class="p-3 rounded-lg" style="background:#0f1117;">
+         <p class="font-semibold mb-1" style="color:#dc2626;">Critical Path</p>
+         <p>Activities with <strong class="mono" style="color:#e8eaed;">Slack = 0</strong> form the critical path — the longest sequence that determines minimum project duration.</p>
+        </div>
+        <div class="p-3 rounded-lg" style="background:#0f1117;">
+         <p class="font-semibold mb-1" style="color:#22c55e;">Slack / Float</p>
+         <p><strong class="mono" style="color:#e8eaed;">Slack = LS − ES</strong>. Non-critical activities can be delayed by their slack without affecting the project deadline.</p>
+        </div>
+       </div>
+      </section>
+     </div>
+    </main>
+    <footer class="px-6 py-4 text-center border-t text-xs" style="border-color:#1e2130;color:#7a7f8e;">
+     Designed by Dr Amin Rukaini Mustafa
+    </footer>
+   </div>
+  </div>
+  <script>
+  let tasks = [];
+  let computed = false;
+  let targetDeadline = null;
+
+  const defaultConfig = {
+    page_title: 'Critical Path Method Simulator',
+    subtitle_text: 'Learn project scheduling visually',
+    background_color: '#0d47a1',
+    surface_color: '#1565c0',
+    text_color: '#e8eaed',
+    primary_action: '#ffb74d',
+    secondary_action: '#4caf50',
+    font_family: 'DM Sans',
+    font_size: 16
+  };
+
+  function applyConfig(config) {
+    const bg = config.background_color || defaultConfig.background_color;
+    const surface = config.surface_color || defaultConfig.surface_color;
+    const text = config.text_color || defaultConfig.text_color;
+    const primary = config.primary_action || defaultConfig.primary_action;
+    const secondary = config.secondary_action || defaultConfig.secondary_action;
+    const font = config.font_family || defaultConfig.font_family;
+    const size = config.font_size || defaultConfig.font_size;
+
+    document.getElementById('app').style.background = bg;
+    document.getElementById('page-title').textContent = config.page_title || defaultConfig.page_title;
+    document.getElementById('subtitle-text').textContent = config.subtitle_text || defaultConfig.subtitle_text;
+
+    document.getElementById('page-title').style.color = text;
+    document.getElementById('page-title').style.fontFamily = `${font}, DM Sans, sans-serif`;
+    document.getElementById('page-title').style.fontSize = `${size * 1.5}px`;
+    document.getElementById('subtitle-text').style.fontSize = `${size * 0.85}px`;
+  }
+
+  window.elementSdk.init({
+    defaultConfig,
+    onConfigChange: async (config) => applyConfig(config),
+    mapToCapabilities: (config) => ({
+      recolorables: [
+        { get: () => config.background_color || defaultConfig.background_color, set: v => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); } },
+        { get: () => config.surface_color || defaultConfig.surface_color, set: v => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); } },
+        { get: () => config.text_color || defaultConfig.text_color, set: v => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); } },
+        { get: () => config.primary_action || defaultConfig.primary_action, set: v => { config.primary_action = v; window.elementSdk.setConfig({ primary_action: v }); } },
+        { get: () => config.secondary_action || defaultConfig.secondary_action, set: v => { config.secondary_action = v; window.elementSdk.setConfig({ secondary_action: v }); } }
+      ],
+      borderables: [],
+      fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: v => { config.font_family = v; window.elementSdk.setConfig({ font_family: v }); } },
+      fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: v => { config.font_size = v; window.elementSdk.setConfig({ font_size: v }); } }
+    }),
+    mapToEditPanelValues: (config) => new Map([
+      ['page_title', config.page_title || defaultConfig.page_title],
+      ['subtitle_text', config.subtitle_text || defaultConfig.subtitle_text]
+    ])
+  });
+
+  // Auto-load on page start
+  window.addEventListener('DOMContentLoaded', () => {
+    resetWorkspace();
+  });
+
+  function resetWorkspace() {
+    tasks = [];
+    computed = false;
+    targetDeadline = null;
+    document.getElementById('project-name').value = '';
+    document.getElementById('results-section').style.display = 'none';
+    renderTable();
+  }
+
+  function showToast(msg, type = 'info') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    const colors = { info: '#4f8cff', error: '#dc2626', success: '#22c55e' };
+    t.className = 'toast';
+    t.style.cssText = `padding:10px 16px;border-radius:8px;font-size:13px;color:#fff;background:${colors[type]||colors.info};pointer-events:auto;`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+  }
+
+  document.getElementById('task-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('task-id').value.trim().toUpperCase();
+    const name = document.getElementById('task-name').value.trim();
+    const dur = parseInt(document.getElementById('task-duration').value);
+    const deps = document.getElementById('task-deps').value.trim().split(',').map(d => d.trim().toUpperCase()).filter(Boolean);
+
+    if (!id || !name || isNaN(dur) || dur < 1) { showToast('Please fill all fields with valid values.', 'error'); return; }
+    if (tasks.find(t => t.id === id)) { showToast(`Activity "${id}" already exists.`, 'error'); return; }
+
+    tasks.push({ id, name, duration: dur, deps, ES: null, EF: null, LS: null, LF: null, slack: null, critical: false });
+    computed = false;
+    renderTable();
+    this.reset();
+    showToast(`Activity ${id} added!`, 'success');
+  });
+
+  function removeTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    tasks.forEach(t => t.deps = t.deps.filter(d => d !== id));
+    computed = false;
+    renderTable();
+    document.getElementById('results-section').style.display = 'none';
+  }
+
+  function renderTable() {
+    const sec = document.getElementById('table-section');
+    sec.style.display = tasks.length ? 'block' : 'none';
+    const tbody = document.getElementById('task-tbody');
+    tbody.innerHTML = '';
+    tasks.forEach(t => {
+      const isCrit = t.critical;
+      const row = document.createElement('tr');
+      row.style.borderTop = '1px solid #1e2130';
+      row.innerHTML = `
+        <td class="px-4 py-3 mono font-semibold" style="color:${isCrit ? '#dc2626' : '#e8eaed'}">${t.id}</td>
+        <td class="px-4 py-3" style="color:#e8eaed">${t.name}</td>
+        <td class="px-4 py-3 mono cursor-pointer rounded px-2 py-1 transition-colors" 
+            onmouseover="this.style.background='#282d42'" 
+            onmouseout="this.style.background='transparent'"
+            onclick="editDuration('${t.id}')" 
+            style="color:#a0a6b8;user-select:none;${computed ? 'background:transparent;' : ''}" 
+            title="Click to edit">${t.duration}</td>
+        <td class="px-4 py-3 mono" style="color:#a0a6b8">${t.deps.length ? t.deps.join(', ') : '—'}</td>
+        <td class="px-4 py-3 mono" style="color:#a0a6b8">${t.ES !== null ? t.ES : '—'}</td>
+        <td class="px-4 py-3 mono" style="color:#a0a6b8">${t.EF !== null ? t.EF : '—'}</td>
+        <td class="px-4 py-3 mono" style="color:#a0a6b8">${t.LS !== null ? t.LS : '—'}</td>
+        <td class="px-4 py-3 mono" style="color:#a0a6b8">${t.LF !== null ? t.LF : '—'}</td>
+        <td class="px-4 py-3 mono font-semibold" style="color:${t.slack === 0 ? '#dc2626' : '#22c55e'}">${t.slack !== null ? t.slack : '—'}</td>
+        <td class="px-4 py-3">${isCrit ? '<span style="color:#dc2626;font-weight:600;">● Yes</span>' : (t.slack !== null ? '<span style="color:#7a7f8e;">No</span>' : '—')}</td>
+        <td class="px-4 py-3 text-center"><button onclick="removeTask('${t.id}')" class="p-1 rounded hover:bg-red-900/30 transition-colors" style="color:#dc2626;"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></button></td>
+      `;
+      tbody.appendChild(row);
+    });
+    lucide.createIcons();
+  }
+
+  function editDuration(taskId) {
+    if (!computed) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '1';
+    input.value = task.duration;
+    input.style.cssText = 'width:50px;padding:4px;border-radius:4px;border:1px solid #4f8cff;background:#0f1117;color:#e8eaed;font-family:JetBrains Mono;text-align:center;';
+    
+    const tbody = document.getElementById('task-tbody');
+    const rows = tbody.querySelectorAll('tr');
+    let targetCell = null;
+    
+    rows.forEach(row => {
+      if (row.textContent.includes(taskId)) {
+        targetCell = row.children[2];
+      }
+    });
+
+    if (targetCell) {
+      const originalContent = targetCell.innerHTML;
+      targetCell.innerHTML = '';
+      targetCell.appendChild(input);
+      input.focus();
+      input.select();
+
+      function saveDuration() {
+        const newDur = parseInt(input.value);
+        if (isNaN(newDur) || newDur < 1) {
+          showToast('Duration must be at least 1', 'error');
+          targetCell.innerHTML = originalContent;
+          return;
+        }
+        task.duration = newDur;
+        showToast(`Duration updated to ${newDur} days. Recalculating...`, 'info');
+        setTimeout(() => calculateCPM(), 300);
+      }
+
+      input.addEventListener('blur', saveDuration);
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') saveDuration();
+        if (e.key === 'Escape') targetCell.innerHTML = originalContent;
+      });
+    }
+  }
+
+  function editProjectDuration() {
+    if (!computed) return;
+    const projDur = Math.max(...tasks.map(t => t.EF));
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = String(projDur);
+    input.value = targetDeadline !== null ? targetDeadline : projDur;
+    input.style.cssText = 'width:80px;padding:6px;border-radius:6px;border:2px solid #4f8cff;background:#0f1117;color:#4f8cff;font-family:JetBrains Mono;text-align:center;font-weight:700;font-size:24px;';
+    
+    const statDiv = document.getElementById('stat-duration').parentElement;
+    const originalContent = statDiv.innerHTML;
+    statDiv.innerHTML = '';
+    statDiv.appendChild(input);
+    input.focus();
+    input.select();
+
+    function saveDeadline() {
+      const newDeadline = parseInt(input.value);
+      if (isNaN(newDeadline)) {
+        statDiv.innerHTML = originalContent;
+        return;
+      }
+      if (newDeadline < 1) {
+        showToast('Target deadline must be at least 1 day', 'error');
+        statDiv.innerHTML = originalContent;
+        return;
+      }
+      targetDeadline = newDeadline;
+      showToast(`Target deadline set to ${newDeadline} days. Recalculating slack...`, 'info');
+      setTimeout(() => recalculateSlack(), 300);
+    }
+
+    input.addEventListener('blur', saveDeadline);
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') saveDeadline();
+      if (e.key === 'Escape') {
+        statDiv.innerHTML = originalContent;
+      }
+    });
+  }
+
+  function recalculateSlack() {
+    if (!computed || targetDeadline === null) return;
+    
+    const map = {}; 
+    tasks.forEach(t => map[t.id] = t);
+    
+    const successors = {};
+    tasks.forEach(t => { successors[t.id] = []; });
+    tasks.forEach(t => { t.deps.forEach(d => successors[d].push(t.id)); });
+
+    const order = tasks.map(t => t.id);
+    [...order].reverse().forEach(id => {
+      const t = map[id];
+      t.LF = successors[id].length ? Math.min(...successors[id].map(s => map[s].LS)) : targetDeadline;
+      t.LS = t.LF - t.duration;
+      t.slack = t.LS - t.ES;
+      t.critical = t.slack === 0;
+    });
+
+    renderTable();
+    document.getElementById('results-section').style.display = 'block';
+    
+    const critTasks = tasks.filter(t => t.critical).sort((a, b) => a.ES - b.ES);
+    const critPath = critTasks.map(t => t.id).join(' → ');
+    document.getElementById('stat-duration').textContent = targetDeadline;
+    document.getElementById('stat-critical').textContent = critTasks.length;
+    document.getElementById('stat-path').textContent = critPath || '—';
+  }
+
+  function topoSort() {
+    const map = {}; tasks.forEach(t => map[t.id] = t);
+    const visited = new Set(), result = [], temp = new Set();
+    function visit(id) {
+      if (temp.has(id)) return false;
+      if (visited.has(id)) return true;
+      temp.add(id);
+      for (const d of (map[id]?.deps || [])) { if (!visit(d)) return false; }
+      temp.delete(id);
+      visited.add(id);
+      result.push(id);
+      return true;
+    }
+    for (const t of tasks) { if (!visit(t.id)) return null; }
+    return result;
+  }
+
+  function calculateCPM() {
+    if (tasks.length < 2) { showToast('Add at least 2 activities.', 'error'); return; }
+    const ids = new Set(tasks.map(t => t.id));
+    for (const t of tasks) {
+      for (const d of t.deps) {
+        if (!ids.has(d)) { showToast(`Dependency "${d}" for activity "${t.id}" not found.`, 'error'); return; }
+      }
+    }
+
+    const order = topoSort();
+    if (!order) { showToast('Circular dependency detected!', 'error'); return; }
+
+    const map = {}; tasks.forEach(t => map[t.id] = t);
+
+    order.forEach(id => {
+      const t = map[id];
+      t.ES = t.deps.length ? Math.max(...t.deps.map(d => map[d].EF)) : 0;
+      t.EF = t.ES + t.duration;
+    });
+
+    const projectDur = Math.max(...tasks.map(t => t.EF));
+
+    const successors = {};
+    tasks.forEach(t => { successors[t.id] = []; });
+    tasks.forEach(t => { t.deps.forEach(d => successors[d].push(t.id)); });
+
+    [...order].reverse().forEach(id => {
+      const t = map[id];
+      t.LF = successors[id].length ? Math.min(...successors[id].map(s => map[s].LS)) : projectDur;
+      t.LS = t.LF - t.duration;
+      t.slack = t.LS - t.ES;
+      t.critical = t.slack === 0;
+    });
+
+    computed = true;
+    renderTable();
+
+    const critTasks = tasks.filter(t => t.critical).sort((a, b) => a.ES - b.ES);
+    const critPath = critTasks.map(t => t.id).join(' → ');
+
+    document.getElementById('stat-duration').textContent = projectDur;
+    document.getElementById('stat-critical').textContent = critTasks.length;
+    document.getElementById('stat-path').textContent = critPath || '—';
+    document.getElementById('results-section').style.display = 'block';
+
+    renderNetwork(order, map, successors);
+    renderGantt(order, map, projectDur);
+    showToast('CPM calculated successfully!', 'success');
+  }
+
+  function renderNetwork(order, map, successors) {
+    const container = document.getElementById('network-graph');
+    const layers = {};
+    order.forEach(id => {
+      const t = map[id];
+      layers[id] = t.deps.length ? Math.max(...t.deps.map(d => layers[d])) + 1 : 0;
+    });
+    const maxLayer = Math.max(...Object.values(layers));
+
+    const groups = {};
+    for (let i = 0; i <= maxLayer; i++) groups[i] = [];
+    Object.entries(layers).forEach(([id, l]) => groups[l].push(id));
+
+    const nodeW = 120, nodeH = 70, gapX = 60, gapY = 30;
+    const maxInLayer = Math.max(...Object.values(groups).map(g => g.length));
+    const svgW = (maxLayer + 1) * (nodeW + gapX) + 40;
+    const svgH = maxInLayer * (nodeH + gapY) + 40;
+
+    const positions = {};
+    Object.entries(groups).forEach(([layer, ids]) => {
+      const l = parseInt(layer);
+      const totalH = ids.length * nodeH + (ids.length - 1) * gapY;
+      const startY = (svgH - totalH) / 2;
+      ids.forEach((id, i) => {
+        positions[id] = { x: 20 + l * (nodeW + gapX), y: startY + i * (nodeH + gapY) };
+      });
+    });
+
+    let svg = `<svg class="graph-svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">`;
+    tasks.forEach(t => {
+      t.deps.forEach(d => {
+        const from = positions[d], to = positions[t.id];
+        const x1 = from.x + nodeW, y1 = from.y + nodeH / 2;
+        const x2 = to.x, y2 = to.y + nodeH / 2;
+        const isCritEdge = map[d].critical && t.critical;
+        svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${isCritEdge ? '#dc2626' : '#2a2f45'}" stroke-width="${isCritEdge ? 2.5 : 1.5}" marker-end="url(#arrow${isCritEdge ? 'R' : ''})"/>`;
+      });
+    });
+
+    svg += `<defs>
+      <marker id="arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#2a2f45"/></marker>
+      <marker id="arrowR" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#dc2626"/></marker>
+    </defs>`;
+
+    Object.entries(positions).forEach(([id, pos]) => {
+      const t = map[id];
+      const fill = t.critical ? '#1c0a0a' : '#1a1d2e';
+      const stroke = t.critical ? '#dc2626' : '#2a2f45';
+      svg += `<rect x="${pos.x}" y="${pos.y}" width="${nodeW}" height="${nodeH}" rx="10" fill="${fill}" stroke="${stroke}" stroke-width="${t.critical ? 2 : 1}"/>`;
+      svg += `<text x="${pos.x + nodeW/2}" y="${pos.y + 22}" text-anchor="middle" fill="${t.critical ? '#dc2626' : '#4f8cff'}" font-size="13" font-weight="700">${t.id}</text>`;
+      svg += `<text x="${pos.x + nodeW/2}" y="${pos.y + 40}" text-anchor="middle" fill="#a0a6b8" font-size="10">${t.name.slice(0,12)}</text>`;
+      svg += `<text x="${pos.x + nodeW/2}" y="${pos.y + 57}" text-anchor="middle" fill="#7a7f8e" font-size="10">ES:${t.ES} EF:${t.EF} S:${t.slack}</text>`;
+    });
+
+    svg += '</svg>';
+    container.innerHTML = svg;
+  }
+
+  function renderGantt(order, map, projectDur) {
+    const container = document.getElementById('gantt-chart');
+    const rowH = 34, labelW = 80, scale = Math.min(30, (700 - labelW) / projectDur);
+    const svgW = labelW + projectDur * scale + 40;
+    const svgH = order.length * rowH + 40;
+
+    let svg = `<svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" style="font-family:'JetBrains Mono',monospace;">`;
+
+    for (let d = 0; d <= projectDur; d++) {
+      const x = labelW + d * scale;
+      svg += `<line x1="${x}" y1="0" x2="${x}" y2="${svgH}" stroke="#1e2130" stroke-width="0.5"/>`;
+      if (d % Math.ceil(projectDur / 15) === 0 || projectDur <= 20) {
+        svg += `<text x="${x}" y="${svgH - 5}" text-anchor="middle" fill="#7a7f8e" font-size="9">${d}</text>`;
+      }
+    }
+
+    order.forEach((id, i) => {
+      const t = map[id];
+      const y = i * rowH + 10;
+      const x = labelW + t.ES * scale;
+      const w = t.duration * scale;
+      svg += `<text x="${labelW - 8}" y="${y + rowH/2 + 1}" text-anchor="end" fill="${t.critical ? '#dc2626' : '#a0a6b8'}" font-size="11" font-weight="${t.critical ? 700 : 400}">${t.id}</text>`;
+      if (t.slack > 0) {
+        svg += `<rect x="${x}" y="${y + 6}" width="${(t.duration + t.slack) * scale}" height="${rowH - 14}" rx="4" fill="#1e2130" opacity="0.6"/>`;
+      }
+      svg += `<rect x="${x}" y="${y + 6}" width="${w}" height="${rowH - 14}" rx="4" fill="${t.critical ? '#dc2626' : '#4f8cff'}" opacity="${t.critical ? 0.85 : 0.65}"/>`;
+      if (w > 28) svg += `<text x="${x + w/2}" y="${y + rowH/2 + 2}" text-anchor="middle" fill="#fff" font-size="9" font-weight="600">${t.duration}d</text>`;
+    });
+
+    svg += '</svg>';
+    container.innerHTML = svg;
+  }
+
+  function loadExample() {
+    const examples = [
+      { name: 'Building Construction', tasks: [{ id:'A', name:'Planning', duration:3, deps:[] }, { id:'B', name:'Design', duration:4, deps:['A'] }, { id:'C', name:'Foundation', duration:6, deps:['A'] }, { id:'D', name:'Framing', duration:5, deps:['B','C'] }, { id:'E', name:'Electrical', duration:3, deps:['C'] }, { id:'F', name:'Finishing', duration:4, deps:['D','E'] }] },
+      { name: 'Software Release', tasks: [{ id:'A', name:'Requirements', duration:5, deps:[] }, { id:'B', name:'Architecture', duration:4, deps:['A'] }, { id:'C', name:'Backend Dev', duration:8, deps:['B'] }, { id:'D', name:'Frontend Dev', duration:7, deps:['B'] }, { id:'E', name:'Testing', duration:4, deps:['C','D'] }, { id:'F', name:'Documentation', duration:3, deps:['C','D'] }, { id:'G', name:'Deployment', duration:2, deps:['E','F'] }] },
+      { name: 'Event Planning', tasks: [{ id:'A', name:'Concept', duration:2, deps:[] }, { id:'B', name:'Budget', duration:3, deps:['A'] }, { id:'C', name:'Venue Selection', duration:4, deps:['B'] }, { id:'D', name:'Catering', duration:5, deps:['B'] }, { id:'E', name:'Marketing', duration:6, deps:['A'] }, { id:'F', name:'Setup', duration:2, deps:['C','D','E'] }, { id:'G', name:'Event Day', duration:1, deps:['F'] }] },
+      { name: 'Product Launch', tasks: [{ id:'A', name:'Market Research', duration:4, deps:[] }, { id:'B', name:'Product Design', duration:6, deps:['A'] }, { id:'C', name:'Prototype', duration:5, deps:['B'] }, { id:'D', name:'Testing', duration:4, deps:['C'] }, { id:'E', name:'Manufacturing Setup', duration:7, deps:['B'] }, { id:'F', name:'Production', duration:3, deps:['D','E'] }, { id:'G', name:'Marketing', duration:4, deps:['A'] }, { id:'H', name:'Distribution', duration:2, deps:['F','G'] }] },
+      { name: 'House Renovation', tasks: [{ id:'A', name:'Permits', duration:3, deps:[] }, { id:'B', name:'Demo', duration:4, deps:['A'] }, { id:'C', name:'Structural', duration:8, deps:['B'] }, { id:'D', name:'Plumbing', duration:6, deps:['C'] }, { id:'E', name:'Electrical', duration:6, deps:['C'] }, { id:'F', name:'Drywall', duration:5, deps:['D','E'] }, { id:'G', name:'Painting', duration:3, deps:['F'] }, { id:'H', name:'Flooring', duration:4, deps:['G'] }, { id:'I', name:'Fixtures', duration:2, deps:['H'] }] }
+    ];
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:50;display:flex;align-items:center;justify-content:center;';
+    modal.innerHTML = `<div style="background:#161822;border:1px solid #1e2130;border-radius:12px;padding:24px;max-width:500px;width:90%;max-height:80vh;overflow-y:auto;"><h2 style="color:#e8eaed;font-size:18px;font-weight:700;margin-bottom:16px;">Choose Example Project</h2><div style="display:flex;flex-direction:column;gap:8px;">${examples.map((ex, i) => `<button onclick="loadExampleProject(${i})" style="padding:12px;border-radius:8px;background:#0f1117;border:1px solid #1e2130;color:#e8eaed;text-align:left;cursor:pointer;transition:all 0.2s;font-size:14px;font-weight:500;" onmouseover="this.style.background='#1e2130'" onmouseout="this.style.background='#0f1117'">${ex.name}</button>`).join('')}</div><button onclick="this.closest('[style*=fixed]').remove()" style="margin-top:16px;width:100%;padding:10px;border-radius:8px;background:#282d42;border:none;color:#a0a6b8;cursor:pointer;font-weight:500;">Cancel</button></div>`;
+    document.body.appendChild(modal);
+  }
+
+  window.loadExampleProject = function(index) {
+    const examples = [
+      [{ id:'A', name:'Planning', duration:3, deps:[] }, { id:'B', name:'Design', duration:4, deps:['A'] }, { id:'C', name:'Foundation', duration:6, deps:['A'] }, { id:'D', name:'Framing', duration:5, deps:['B','C'] }, { id:'E', name:'Electrical', duration:3, deps:['C'] }, { id:'F', name:'Finishing', duration:4, deps:['D','E'] }],
+      [{ id:'A', name:'Requirements', duration:5, deps:[] }, { id:'B', name:'Architecture', duration:4, deps:['A'] }, { id:'C', name:'Backend Dev', duration:8, deps:['B'] }, { id:'D', name:'Frontend Dev', duration:7, deps:['B'] }, { id:'E', name:'Testing', duration:4, deps:['C','D'] }, { id:'F', name:'Documentation', duration:3, deps:['C','D'] }, { id:'G', name:'Deployment', duration:2, deps:['E','F'] }],
+      [{ id:'A', name:'Concept', duration:2, deps:[] }, { id:'B', name:'Budget', duration:3, deps:['A'] }, { id:'C', name:'Venue Selection', duration:4, deps:['B'] }, { id:'D', name:'Catering', duration:5, deps:['B'] }, { id:'E', name:'Marketing', duration:6, deps:['A'] }, { id:'F', name:'Setup', duration:2, deps:['C','D','E'] }, { id:'G', name:'Event Day', duration:1, deps:['F'] }],
+      [{ id:'A', name:'Market Research', duration:4, deps:[] }, { id:'B', name:'Product Design', duration:6, deps:['A'] }, { id:'C', name:'Prototype', duration:5, deps:['B'] }, { id:'D', name:'Testing', duration:4, deps:['C'] }, { id:'E', name:'Manufacturing Setup', duration:7, deps:['B'] }, { id:'F', name:'Production', duration:3, deps:['D','E'] }, { id:'G', name:'Marketing', duration:4, deps:['A'] }, { id:'H', name:'Distribution', duration:2, deps:['F','G'] }],
+      [{ id:'A', name:'Permits', duration:3, deps:[] }, { id:'B', name:'Demo', duration:4, deps:['A'] }, { id:'C', name:'Structural', duration:8, deps:['B'] }, { id:'D', name:'Plumbing', duration:6, deps:['C'] }, { id:'E', name:'Electrical', duration:6, deps:['C'] }, { id:'F', name:'Drywall', duration:5, deps:['D','E'] }, { id:'G', name:'Painting', duration:3, deps:['F'] }, { id:'H', name:'Flooring', duration:4, deps:['G'] }, { id:'I', name:'Fixtures', duration:2, deps:['H'] }]
+    ];
+    const exampleNames = ['Building Construction', 'Software Release', 'Event Planning', 'Product Launch', 'House Renovation'];
+    tasks = exampleNames[index] ? examples[index].map(t => ({ ...t, ES:null, EF:null, LS:null, LF:null, slack:null, critical:false })) : [];
+    document.getElementById('project-name').value = exampleNames[index] || 'Example';
+    computed = false;
+    document.getElementById('results-section').style.display = 'none';
+    renderTable();
+    document.querySelectorAll('[style*="position:fixed"]').forEach(el => el.remove());
+    showToast(`Loaded: ${exampleNames[index]}. Hit Calculate CPM!`, 'success');
+  };
+
+  lucide.createIcons();
+</script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e4f9443601c8117',t:'MTc3NDk2MjQ2OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
